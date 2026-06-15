@@ -1,0 +1,22 @@
+[project]
+name = "spo-vs-sfge"
+version = "0.1.0"
+description = "Reproducible, self-contained SPO+ vs SFGE comparison for predict-then-optimize / decision-focused learning"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    # pinned to a known-good set (mirrors the environment the experiments were run in)
+    "numpy>=2.0,<2.3",
+    "scipy>=1.13",
+    "torch>=2.2",
+    "pyepo==2.2.2",      # data generators, optModels, normalized-regret metric, SPO+ loss
+    "gurobipy>=11",      # PyEPO's optimization models + the regret metric solve with Gurobi
+]
+
+# This project is just two scripts (dfl.py, spo_vs_sfge.py), not an installable package.
+[tool.uv]
+package = false
+
+# Run with:
+#   uv sync
+#   uv run python spo_vs_sfge.py --problem knapsack --deg 4 --seeds 0,1,2
