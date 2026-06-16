@@ -69,8 +69,9 @@ c_i *=  epsilon_i ,   epsilon_i ~ Uniform(1 − noise_width, 1 + noise_width)
 
 (knapsack additionally multiplies by 5 and rounds up to integer values). So:
 
-- **`deg = 1`** → the cost is a *linear* function of the features → the linear predictor is
-  **well-specified**; MSE regression is essentially optimal and DFL losses have little to add.
+- **`deg = 1`** → the generator's signal is affine in the features. With the default
+  bias-free predictor this is not strictly well-specified for every problem; use `--bias`
+  to run the corresponding sensitivity check.
 - **`deg > 1`** → the cost is a degree-`deg` *polynomial* the linear model **cannot represent** →
   **misspecified**. The higher `deg`, the larger the bias, and the more the *decision-aware* loss
   can beat MSE — and the more the choice between SPO+ and SFGE matters.
@@ -84,8 +85,10 @@ This is the standard misspecification protocol used throughout the SPO/DFL liter
 ## Results
 
 <!-- RESULTS:START -->
-All numbers are **normalized regret, lower is better**, mean ± std over 3 seeds, **cold init**,
-`n_train = 400`, linear predictor, scored by PyEPO/Gurobi. Reproduce with `uv run python run_all.py`.
+The static tables below are prior reference numbers: **normalized regret, lower is better**,
+mean ± std over 3 seeds, **cold init**, `n_train = 400`, linear predictor, scored by
+PyEPO/Gurobi. The current deterministic runner writes the authoritative per-run metadata and
+regrets to JSON; use `uv run python run_all.py` to regenerate current results.
 
 **TL;DR**: SFGE is not uniformly worse than SPO+, but robustly beats SPO+ on ILP (knapsack) and SOCP (portfolio) problems, including the misspecification settings. SPO+ still wins LP (shortest path) and TSP.
 
@@ -102,7 +105,7 @@ All numbers are **normalized regret, lower is better**, mean ± std over 3 seeds
 
 | deg | SPO+ | SFGE | SFGE improvement |
 |---|---|---|---|
-| 1 (well-specified) | 0.1901 ± 0.0036 | **0.1605** ± 0.0030 | −16% |
+| 1 (affine signal) | 0.1901 ± 0.0036 | **0.1605** ± 0.0030 | −16% |
 | 2 | 0.1406 ± 0.0067 | **0.1168** ± 0.0025 | −17% |
 | 4 | 0.0754 ± 0.0042 | **0.0625** ± 0.0014 | −17% |
 | 6 | 0.0605 ± 0.0023 | **0.0414** ± 0.0047 | −32% |
@@ -130,11 +133,18 @@ All numbers are **normalized regret, lower is better**, mean ± std over 3 seeds
 ## Reproducing the tables
 
 ```bash
-uv run python run_all.py        # prints Tables 1–4 (3 seeds each)
+uv run python run_all.py        # prints Tables 1–4 and writes experiment_results/results.json
 ```
 
-`run_all.py` runs the same comparison the CLI does, sweeping problems / degrees / noise, and is the
-exact script used to fill the tables above.
+`run_all.py` uses the same deterministic execution helper as the CLI, sweeping problems / degrees /
+noise and recording per-seed regrets, seed streams, run configuration, and solver sanity checks in
+JSON. Full default TSP/SPO+ runs are solver-heavy; for a quick bounded artifact, reduce the explicit
+budgets, for example:
+
+```bash
+uv run python run_all.py --n-test 200 --spo-epochs 5 --sfge-epochs 10 --sfge-samples 4 \
+  --check-solvers --json-out experiment_results/results.json
+```
 
 ## Files
 
