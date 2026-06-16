@@ -130,6 +130,78 @@ regrets to JSON; use `uv run python run_all.py` to regenerate current results.
 | 0.5 | **0.0855** ± 0.0081 | 0.1100 ± 0.0158 | SPO+ |
 | 1.0 | **0.3193** ± 0.0299 | 0.3441 ± 0.0299 | SPO+ |
 
+### Table 5: learning-rate sweep — **full per-`lr` results** (deg = 4, 3 seeds, cold init)
+
+Tables 1–4 fix the Adam learning rate at `1e-2` for **both** methods. But the step size is a
+sensitive knob — *especially* for SFGE, whose REINFORCE estimator barely moves at small `lr` and
+needs a larger step than SPO+. A single-`lr` comparison can therefore flatter or punish either
+method. Below is the **complete sweep**: every `lr ∈ {1e-3, 3e-3, 1e-2, 3e-2, 1e-1}`, SPO+ and SFGE
+side by side, mean ± std over 3 seeds (normalized regret, lower is better; **bold** = that method's
+best `lr`; `lr=1e-2` is the row used by Tables 1–4). Machine-readable: `experiment_results/sweep_lr.json`.
+
+#### Table 5a — shortest_path (LP)
+| lr | SPO+ | SFGE | winner @ lr |
+|---|---|---|---|
+| 1e-3 | 0.0306 ± 0.0198 | 0.3081 ± 0.0904 | SPO+ |
+| 3e-3 | **0.0082 ± 0.0034** | 0.0888 ± 0.0331 | SPO+ |
+| 1e-2 | 0.0091 ± 0.0035 | 0.0180 ± 0.0039 | SPO+ |
+| 3e-2 | 0.0104 ± 0.0034 | 0.0106 ± 0.0035 | SPO+ |
+| 1e-1 | 0.0128 ± 0.0060 | **0.0092 ± 0.0035** | SFGE |
+
+#### Table 5b — knapsack (ILP)
+| lr | SPO+ | SFGE | winner @ lr |
+|---|---|---|---|
+| 1e-3 | 0.1537 ± 0.0015 | 0.2609 ± 0.0031 | SPO+ |
+| 3e-3 | 0.0906 ± 0.0036 | 0.1336 ± 0.0086 | SPO+ |
+| 1e-2 | 0.0764 ± 0.0035 | 0.0627 ± 0.0022 | SFGE |
+| 3e-2 | **0.0704 ± 0.0036** | **0.0595 ± 0.0016** | SFGE |
+| 1e-1 | 0.0709 ± 0.0038 | 0.0602 ± 0.0024 | SFGE |
+
+#### Table 5c — tsp (ILP)
+| lr | SPO+ | SFGE | winner @ lr |
+|---|---|---|---|
+| 1e-3 | 0.1792 ± 0.0341 | 0.6142 ± 0.1009 | SPO+ |
+| 3e-3 | 0.0651 ± 0.0192 | 0.2356 ± 0.0286 | SPO+ |
+| 1e-2 | 0.0327 ± 0.0129 | 0.0559 ± 0.0158 | SPO+ |
+| 3e-2 | 0.0267 ± 0.0101 | 0.0311 ± 0.0122 | SPO+ |
+| 1e-1 | **0.0246 ± 0.0089** | **0.0273 ± 0.0109** | SPO+ |
+
+#### Table 5d — portfolio (SOCP)
+| lr | SPO+ | SFGE | winner @ lr |
+|---|---|---|---|
+| 1e-3 | 0.0487 ± 0.0046 | 0.1159 ± 0.0153 | SPO+ |
+| 3e-3 | **0.0260 ± 0.0005** | 0.0517 ± 0.0012 | SPO+ |
+| 1e-2 | 0.0289 ± 0.0006 | 0.0255 ± 0.0005 | SFGE |
+| 3e-2 | 0.0324 ± 0.0018 | **0.0247 ± 0.0004** | SFGE |
+| 1e-1 | 0.0402 ± 0.0023 | 0.0248 ± 0.0004 | SFGE |
+
+#### Best-tuned head-to-head (each method at its own best `lr`)
+| problem | category | SPO+ (best lr) | SFGE (best lr) | best-tuned winner |
+|---|---|---|---|---|
+| shortest_path | LP   | **0.0082** ± 0.0034 @ 3e-3 | 0.0092 ± 0.0035 @ 1e-1 | SPO+ |
+| knapsack      | ILP  | 0.0704 ± 0.0036 @ 3e-2 | **0.0595** ± 0.0016 @ 3e-2 | **SFGE** |
+| tsp           | ILP  | **0.0246** ± 0.0089 @ 1e-1 | 0.0273 ± 0.0109 @ 1e-1 | SPO+ |
+| portfolio     | SOCP | 0.0260 ± 0.0005 @ 3e-3 | **0.0247** ± 0.0004 @ 3e-2 | **SFGE** |
+
+**Reading the per-`lr` tables.** At **small `lr`** SPO+ wins almost everywhere — not because it is
+better, but because SFGE's score-function estimator barely leaves the initialization (e.g. SFGE on
+shortest_path is 0.31 at `lr=1e-3`, vs 0.009 at `lr=1e-1` — a 33× swing). As `lr` grows SFGE catches
+up and overtakes on the integer/conic problems. The fixed `lr=1e-2` row (Tables 1–4) sits in a region
+that happens to favor SPO+ on shortest_path; the per-`lr` view shows that is a tuning effect, not a
+structural gap.
+
+**What the sweep changes — and what it doesn't.**
+- **The qualitative conclusion survives tuning.** With each method at its own best `lr`, SPO+ still
+  wins the LP/TSP-style decisions and SFGE still wins the integer-knapsack/SOCP-portfolio decisions
+  — the same split as the fixed-`lr` tables. The headline result is *not* a learning-rate artifact.
+- **But the LP margin shrinks sharply.** At the fixed `lr=1e-2`, SFGE on shortest_path looks ~2×
+  worse than SPO+ (0.0180 vs 0.0091). That gap is mostly a tuning artifact: SFGE at `lr=1e-2` is far
+  from its optimum and recovers to **0.0092** at `lr=1e-1` — within ~12% of SPO+. So the fixed-`lr`
+  Tables 3–4 *overstate* SPO+'s LP dominance.
+- **SFGE is the more `lr`-sensitive method** (its regret spread across the grid is 3–13× SPO+'s, e.g.
+  shortest_path 0.299 vs 0.022): at too-small `lr` it stalls near the init. SPO+ is sensitive too,
+  but over a narrower band. Both should be tuned; reporting a single shared `lr` is not a fair test.
+
 ## Reproducing the tables
 
 ```bash
@@ -146,10 +218,22 @@ uv run python run_all.py --n-test 200 --spo-epochs 5 --sfge-epochs 10 --sfge-sam
   --check-solvers --json-out experiment_results/results.json
 ```
 
+For the learning-rate sweep (Table 5):
+
+```bash
+uv run python sweep_lr.py --problems shortest_path,knapsack,tsp,portfolio --deg 4 \
+  --lrs 1e-3,3e-3,1e-2,3e-2,1e-1 --seeds 0,1,2 \
+  --json-out experiment_results/sweep_lr.json --md-out experiment_results/sweep_lr.md
+```
+
+It writes per-`lr` regret curves (`sweep_lr.md`) and a machine-readable artifact (`sweep_lr.json`).
+TSP/SPO+ is solver-heavy (a Gurobi MTZ solve per instance per step); the full sweep takes a while.
+
 ## Files
 
 | file | description |
 |---|---|
 | `spo_vs_sfge.py` | CLI to run experiment by choice |
 | `dfl.py` | All logic code for solvers and problems are crammed up here |
-| `run_all.py` | Run all experiments |
+| `run_all.py` | Run all experiments (Tables 1–4) |
+| `sweep_lr.py` | Learning-rate sweep, fair per-method tuning (Table 5) |
